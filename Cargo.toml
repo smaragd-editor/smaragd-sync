@@ -1,0 +1,3 @@
+[workspace]
+members = ["smaragd-sync-protocol", "smaragd-sync-server"]
+resolver = "3"

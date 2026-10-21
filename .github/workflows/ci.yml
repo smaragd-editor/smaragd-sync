@@ -1,48 +1,15 @@
-name: Sync server
-
-# The sync server (crates/smaragd-sync-server) is its own Cargo workspace with its
-# own Cargo.lock, so it has its own workflow: it only runs when the server, the
-# shared protocol crate, or the e2e crate (its own separate Cargo.lock too) changes,
-# and it publishes the Docker image on version tags.
+name: CI
 
 on:
   push:
     branches: [main]
     tags: ["v*", "[0-9]*"]
-    paths:
-      - "crates/smaragd-sync-server/**"
-      - "crates/smaragd-sync-protocol/**"
-      - "crates/smaragd-sync-e2e/**"
-      - "src/sync/**"
-      - ".github/workflows/sync-server.yml"
-      - "scripts/sync-server-smoke-test.sh"
-      # smaragd-sync-e2e path-depends on the root crate (it links the whole
-      # desktop app), so it has its own standalone Cargo.lock that silently
-      # drifts out of sync with it whenever a root dependency changes here —
-      # Dependabot only watches the root `/` directory (.github/dependabot.yml),
-      # so a bump here never otherwise touches a path this workflow watches.
-      # Twice already (406b37de, and the run this comment's commit fixes), that
-      # let a stale e2e lockfile merge to main unnoticed until something
-      # unrelated finally touched src/sync/** and ran `cargo clippy --locked`
-      # against it. Watching these two catches the drift on the bump's own PR
-      # instead.
-      - "Cargo.toml"
-      - "Cargo.lock"
   pull_request:
     branches: [main]
-    paths:
-      - "crates/smaragd-sync-server/**"
-      - "crates/smaragd-sync-protocol/**"
-      - "crates/smaragd-sync-e2e/**"
-      - "src/sync/**"
-      - ".github/workflows/sync-server.yml"
-      - "scripts/sync-server-smoke-test.sh"
-      - "Cargo.toml"
-      - "Cargo.lock"
 
 jobs:
   test:
-    name: Sync server (fmt, clippy, tests)
+    name: Protocol + server (fmt, clippy, tests)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -52,53 +19,20 @@ jobs:
           components: clippy, rustfmt
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: crates/smaragd-sync-server
 
       - name: cargo fmt --check
-        working-directory: crates/smaragd-sync-server
-        run: cargo fmt --check
+        run: cargo fmt --all --check
 
       - name: cargo clippy
-        working-directory: crates/smaragd-sync-server
-        run: cargo clippy --all-targets --locked -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
       - name: cargo test
-        working-directory: crates/smaragd-sync-server
-        run: cargo test --locked
-
-  e2e:
-    name: End-to-end (real client + real server)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: crates/smaragd-sync-e2e
-
-      # Links the whole desktop app plus the server, so it's about as heavy as the
-      # main CI job; that's why it's a crate (and a job) of its own.
-      - name: cargo fmt --check
-        working-directory: crates/smaragd-sync-e2e
-        run: cargo fmt --check
-
-      - name: cargo clippy
-        working-directory: crates/smaragd-sync-e2e
-        run: cargo clippy --all-targets --locked -- -D warnings
-
-      - name: cargo test
-        working-directory: crates/smaragd-sync-e2e
-        run: cargo test --locked
+        run: cargo test --workspace --locked
 
   docker:
     name: Docker image
     runs-on: ubuntu-latest
-    needs: [test, e2e]
+    needs: [test]
     permissions:
       contents: read
       packages: write
@@ -131,7 +65,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: crates/smaragd-sync-server/Dockerfile
+          file: smaragd-sync-server/Dockerfile
           load: true
           tags: smaragd-sync-server:ci
           cache-from: type=gha
@@ -148,7 +82,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: crates/smaragd-sync-server/Dockerfile
+          file: smaragd-sync-server/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

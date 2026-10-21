@@ -3,7 +3,7 @@
 # Build from the REPOSITORY ROOT (the server path-depends on the shared protocol
 # crate, so the build context must contain both):
 #
-#   docker build -f crates/smaragd-sync-server/Dockerfile -t smaragd-sync-server .
+#   docker build -f smaragd-sync-server/Dockerfile -t smaragd-sync-server .
 #
 # Run:
 #
@@ -14,7 +14,7 @@
 # (localhost only: it speaks plain HTTP, so put a TLS reverse proxy in front for other
 # machines — see the README)
 #
-# See crates/smaragd-sync-server/README.md for configuration and TLS.
+# See smaragd-sync-server/README.md for configuration and TLS.
 
 FROM rust:1-slim-bookworm AS build
 # rusqlite's bundled SQLite is compiled from C.
@@ -22,17 +22,17 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
-COPY crates/smaragd-sync-protocol crates/smaragd-sync-protocol
-COPY crates/smaragd-sync-server crates/smaragd-sync-server
-WORKDIR /src/crates/smaragd-sync-server
+COPY Cargo.toml Cargo.lock ./
+COPY smaragd-sync-protocol smaragd-sync-protocol
+COPY smaragd-sync-server smaragd-sync-server
 # --locked: the committed Cargo.lock decides every dependency version.
-RUN cargo build --release --locked
+RUN cargo build --release --locked -p smaragd-sync-server
 
 FROM debian:bookworm-slim
 RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin smaragd \
  && mkdir /data \
  && chown smaragd /data
-COPY --from=build /src/crates/smaragd-sync-server/target/release/smaragd-sync-server /usr/local/bin/smaragd-sync-server
+COPY --from=build /src/target/release/smaragd-sync-server /usr/local/bin/smaragd-sync-server
 
 ENV SMARAGD_SYNC_LISTEN_ADDR=0.0.0.0:8080 \
     SMARAGD_SYNC_DATA_DIR=/data

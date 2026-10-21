@@ -97,7 +97,7 @@ Keep `.env` out of version control; it is a secret.
 To build the image yourself, from the **repository root**:
 
 ```sh
-docker build -f crates/smaragd-sync-server/Dockerfile -t smaragd-sync-server .
+docker build -f smaragd-sync-server/Dockerfile -t smaragd-sync-server .
 ```
 
 The container runs as a non-root user (uid 10001), listens on plain HTTP port 8080,
@@ -115,8 +115,7 @@ There are no prebuilt binaries yet, so build it with a current stable Rust
 Visual Studio Build Tools on Windows), from a checkout of this repository:
 
 ```sh
-cd crates/smaragd-sync-server
-cargo build --release --locked
+cargo build --release --locked -p smaragd-sync-server
 # the binary: target/release/smaragd-sync-server
 ```
 
@@ -282,7 +281,7 @@ curl -X POST http://localhost:8080/v1/vaults \
 ```
 
 The full HTTP API is documented in the `smaragd-sync-protocol` crate
-(`crates/smaragd-sync-protocol/src/lib.rs`, rendered by `cargo doc`).
+(`smaragd-sync-protocol/src/lib.rs`, rendered by `cargo doc`).
 
 ## Operating it
 
@@ -400,19 +399,17 @@ one right away.
 
 ## Building from source
 
-The server is its own Cargo workspace (so its dependencies stay out of the desktop
-app's lockfile):
+The protocol and server crates share one Cargo workspace at the repo root:
 
 ```sh
-cd crates/smaragd-sync-server
-cargo build --release      # target/release/smaragd-sync-server
-cargo test                 # unit + HTTP tests
-SMARAGD_SYNC_ALLOW_OPEN_REGISTRATION=true cargo run   # a throwaway dev server in ./data
-
-# End-to-end tests (real Smaragd client + engine against this server) live in a
-# crate of their own, because they link the whole desktop app:
-cd ../smaragd-sync-e2e && cargo test
+cargo build --release -p smaragd-sync-server   # target/release/smaragd-sync-server
+cargo test --workspace                         # unit + HTTP tests
+SMARAGD_SYNC_ALLOW_OPEN_REGISTRATION=true cargo run -p smaragd-sync-server   # a throwaway dev server in ./data
 ```
+
+End-to-end tests (the real Smaragd client + engine against this server) live in
+their own repo, [smaragd-sync-e2e](https://github.com/smaragd-editor/smaragd-sync-e2e),
+because they link the whole desktop app.
 
 To install and run it for real, see [Running without Docker](#running-without-docker).
 
