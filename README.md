@@ -3,6 +3,9 @@
 Self-hostable, end-to-end-encrypted sync for [Smaragd](https://github.com/smaragd-editor/smaragd),
 a native desktop authoring tool for writers.
 
+New here? See [GETTING-STARTED.md](GETTING-STARTED.md) for the shortest path to a
+working setup.
+
 - [`smaragd-sync-protocol/`](smaragd-sync-protocol) — wire types shared by the
   Smaragd desktop client and this server: ids, encrypted-envelope layout, the
   pairing ticket, HTTP API request/response types. Consumed by the main
